@@ -63,18 +63,27 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
     @Override
     protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession) {
+        logger.infov("LtiProtocolMapper: setClaim() called, userSession id={0}, all notes={1}",
+                userSession.getId(), userSession.getNotes());
+
         String ltiMessageHint = userSession.getNote(LtiConstants.LTI_MESSAGE_HINT_PARAM);
+        logger.infov("LtiProtocolMapper: lti_message_hint user-session note = {0}", ltiMessageHint);
+
         if (ltiMessageHint == null || ltiMessageHint.isEmpty()) {
+            // Diagnostic only: dump every user-session note we actually received, in case
+            // the note arrived under a different key, or LtiMarkerAuthenticator never ran.
+            logger.info("LtiProtocolMapper: lti_message_hint absent; not injecting LTI claims for this token");
             return;
         }
 
-        logger.debug("LtiProtocolMapper: injecting LTI claims for lti_message_hint=" + ltiMessageHint);
+        logger.infov("LtiProtocolMapper: injecting LTI claims for lti_message_hint={0}", ltiMessageHint);
 
         token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
         token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, LtiConstants.PLACEHOLDER_DEPLOYMENT_ID);
 
         String targetLinkUri = userSession.getNote("lti_target_link_uri");
+        logger.infov("LtiProtocolMapper: lti_target_link_uri user-session note = {0}", targetLinkUri);
         token.getOtherClaims().put(LtiConstants.CLAIM_TARGET_LINK_URI, targetLinkUri);
 
         Map<String, Object> resourceLink = new LinkedHashMap<>();
@@ -83,6 +92,8 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
 
         token.getOtherClaims().put(LtiConstants.CLAIM_ROLES, Collections.singletonList(LtiConstants.LEARNER_ROLE));
+
+        logger.info("LtiProtocolMapper: LTI claims injected successfully");
     }
 
     public static ProtocolMapperModel create(String name, boolean accessToken, boolean idToken, boolean userInfo) {

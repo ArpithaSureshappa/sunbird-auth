@@ -19,20 +19,32 @@ public class LtiMarkerAuthenticator implements Authenticator {
 
     @Override
     public void authenticate(AuthenticationFlowContext context) {
+        logger.infov("LtiMarkerAuthenticator: authenticate() called, execution id={0}, client={1}",
+                context.getExecution().getId(),
+                context.getAuthenticationSession().getClient() != null
+                        ? context.getAuthenticationSession().getClient().getClientId() : "null");
+
         String ltiMessageHint = context.getAuthenticationSession()
                 .getClientNote(LtiConstants.LTI_MESSAGE_HINT_PARAM);
+        logger.infov("LtiMarkerAuthenticator: lti_message_hint client note = {0}", ltiMessageHint);
 
         if (ltiMessageHint != null && !ltiMessageHint.isEmpty()) {
-            logger.debug("LtiMarkerAuthenticator: lti_message_hint present, marking session for LTI claim injection");
+            logger.info("LtiMarkerAuthenticator: lti_message_hint present, marking session for LTI claim injection");
             context.getAuthenticationSession().setUserSessionNote(
                     LtiConstants.LTI_MESSAGE_HINT_PARAM, ltiMessageHint);
 
             // target_link_uri claim should match the redirect_uri the Tool actually registered
             // for this launch - propagate it the same way, rather than hardcoding it.
             String redirectUri = context.getAuthenticationSession().getClientNote("redirect_uri");
+            logger.infov("LtiMarkerAuthenticator: redirect_uri client note = {0}", redirectUri);
             if (redirectUri != null) {
                 context.getAuthenticationSession().setUserSessionNote("lti_target_link_uri", redirectUri);
             }
+        } else {
+            // Diagnostic only: dump every client note we actually received, in case
+            // lti_message_hint arrived under a different key than expected.
+            logger.infov("LtiMarkerAuthenticator: lti_message_hint absent; all client notes = {0}",
+                    context.getAuthenticationSession().getClientNotes());
         }
 
         context.success();
