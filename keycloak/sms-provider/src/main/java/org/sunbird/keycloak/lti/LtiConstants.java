@@ -22,6 +22,7 @@ public final class LtiConstants {
     public static final String CLAIM_TARGET_LINK_URI = "https://purl.imsglobal.org/spec/lti/claim/target_link_uri";
     public static final String CLAIM_RESOURCE_LINK = "https://purl.imsglobal.org/spec/lti/claim/resource_link";
     public static final String CLAIM_ROLES = "https://purl.imsglobal.org/spec/lti/claim/roles";
+    public static final String CLAIM_CUSTOM = "https://purl.imsglobal.org/spec/lti/claim/custom";
 
     public static final String MESSAGE_TYPE_RESOURCE_LINK_REQUEST = "LtiResourceLinkRequest";
     public static final String LTI_VERSION = "1.3.0";
@@ -33,6 +34,11 @@ public final class LtiConstants {
     public static final String PLACEHOLDER_DEPLOYMENT_ID = "1";
     public static final String PLACEHOLDER_RESOURCE_LINK_ID = "1";
     public static final String PLACEHOLDER_RESOURCE_LINK_TITLE = "iGOT LTI Resource";
+
+    /** Moodle's enrol_lti "Publish as LTI tool" Custom properties value for the one PoC
+     *  resource ("Course: test course") - Moodle's launch.php rejects the launch without a
+     *  matching custom.id claim, separate from resource_link.id. */
+    public static final String PLACEHOLDER_CUSTOM_ID = "a8e7888a-5287-4dd9-94f7-889fd79a9462";
 
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
