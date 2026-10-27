@@ -6,9 +6,15 @@ public final class LtiConstants {
     private LtiConstants() {
     }
 
-    /** Non-standard OIDC param Moodle sends only on LTI launches; its presence is how we tell an LTI
-     *  authorize request apart from a normal iGOT login, without touching the existing login flow. */
+    /** Our own key for the user-session note we set ourselves once an LTI launch is detected -
+     *  not a Keycloak-populated value, so no prefix needed here. */
     public static final String LTI_MESSAGE_HINT_PARAM = "lti_message_hint";
+
+    /** The client note key Keycloak actually stores lti_message_hint under. Keycloak prefixes
+     *  any OIDC request parameter it doesn't natively recognize with "client_request_param_"
+     *  (standard ones like nonce/redirect_uri/scope are NOT prefixed) - confirmed directly from
+     *  a live AuthenticationFlowContext dump: {@code client_request_param_lti_message_hint=...}. */
+    public static final String LTI_MESSAGE_HINT_CLIENT_NOTE = "client_request_param_lti_message_hint";
 
     public static final String CLAIM_MESSAGE_TYPE = "https://purl.imsglobal.org/spec/lti/claim/message_type";
     public static final String CLAIM_VERSION = "https://purl.imsglobal.org/spec/lti/claim/version";

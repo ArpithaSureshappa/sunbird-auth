@@ -25,7 +25,7 @@ public class LtiMarkerAuthenticator implements Authenticator {
                         ? context.getAuthenticationSession().getClient().getClientId() : "null");
 
         String ltiMessageHint = context.getAuthenticationSession()
-                .getClientNote(LtiConstants.LTI_MESSAGE_HINT_PARAM);
+                .getClientNote(LtiConstants.LTI_MESSAGE_HINT_CLIENT_NOTE);
         logger.infov("LtiMarkerAuthenticator: lti_message_hint client note = {0}", ltiMessageHint);
 
         if (ltiMessageHint != null && !ltiMessageHint.isEmpty()) {
