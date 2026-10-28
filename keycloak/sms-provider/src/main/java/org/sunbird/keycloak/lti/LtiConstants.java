@@ -38,7 +38,8 @@ public final class LtiConstants {
     /** Moodle's enrol_lti "Publish as LTI tool" Custom properties value for the one PoC
      *  resource ("Course: test course") - Moodle's launch.php rejects the launch without a
      *  matching custom.id claim, separate from resource_link.id. */
-    public static final String PLACEHOLDER_CUSTOM_ID = "a8e7888a-5287-4dd9-94f7-889fd79a9462";
+    public static final String PLACEHOLDER_CUSTOM_ID = "602ba6d8-da5e-4ffa-8ed3-ffeab3211ebe";
+
 
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
