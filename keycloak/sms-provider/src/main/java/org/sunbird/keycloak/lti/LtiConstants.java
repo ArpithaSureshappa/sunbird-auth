@@ -23,9 +23,24 @@ public final class LtiConstants {
     public static final String CLAIM_RESOURCE_LINK = "https://purl.imsglobal.org/spec/lti/claim/resource_link";
     public static final String CLAIM_ROLES = "https://purl.imsglobal.org/spec/lti/claim/roles";
     public static final String CLAIM_CUSTOM = "https://purl.imsglobal.org/spec/lti/claim/custom";
+    public static final String CLAIM_DEEP_LINKING_SETTINGS = "https://purl.imsglobal.org/spec/lti-dl/claim/deep_linking_settings";
 
     public static final String MESSAGE_TYPE_RESOURCE_LINK_REQUEST = "LtiResourceLinkRequest";
+    public static final String MESSAGE_TYPE_DEEP_LINKING_REQUEST = "LtiDeepLinkingRequest";
     public static final String LTI_VERSION = "1.3.0";
+
+    /** Substring marker used to detect a Deep Linking launch: Moodle's deep-linking endpoint
+     *  is a distinct URL (launch_deeplink.php) from its resource-link launch endpoint
+     *  (launch.php), and both arrive via the same redirect_uri client-session note - no
+     *  separate flag exists to tell them apart, so the URL itself is the signal. */
+    public static final String DEEP_LINKING_URI_MARKER = "launch_deeplink.php";
+
+    /** PoC placeholder: no real Deep Linking Response receiving endpoint exists yet on our
+     *  side, so this URL isn't actually live - it only needs to be a syntactically valid
+     *  HTTPS URL for Moodle to render its content-select picker. Replace once the endpoint
+     *  that verifies Moodle's JWKS-signed response and persists selected content_items exists. */
+    public static final String PLACEHOLDER_DEEP_LINK_RETURN_URL =
+            "https://portal.dev.karmayogibharat.net/ltiIntegration/deeplink/return";
 
     /** PoC placeholders: no provider/resource-link registry exists since the removal of
      *  cios-content-service's LTI package. Single hardcoded deployment, matching the one

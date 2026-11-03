@@ -39,6 +39,13 @@ import org.keycloak.representations.IDToken;
  *
  * <p>deployment_id / resource_link are PoC placeholders (see {@link LtiConstants}) until the
  * provider/content registry that used to live in cios-content-service is rebuilt elsewhere.
+ *
+ * <p>Also builds Deep Linking requests: Moodle's deep-linking endpoint
+ * ({@value LtiConstants#DEEP_LINKING_URI_MARKER}) is a distinct URL from its resource-link
+ * launch endpoint, arriving via the same redirect_uri client-session note - that URL is the
+ * only signal distinguishing the two, since there's no separate flag for it. When matched,
+ * emits {@code LtiDeepLinkingRequest} with a {@code deep_linking_settings} claim instead of
+ * {@code resource_link}/{@code target_link_uri}/{@code custom}, per the Deep Linking spec.
  */
 public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
@@ -69,10 +76,12 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
     @Override
     public String getHelpText() {
-        return "Injects LTI 1.3 Core Message claims (message_type, deployment_id, target_link_uri, "
-                + "resource_link, roles) only when the incoming authorize request carried "
-                + "lti_message_hint; a no-op for every other login. Reads it directly from the "
-                + "client session - no authenticator or flow change required.";
+        return "Injects LTI 1.3 claims only when the incoming authorize request carried "
+                + "lti_message_hint; a no-op for every other login. Emits a resource-link launch "
+                + "(message_type, target_link_uri, resource_link, roles) or, when redirect_uri "
+                + "targets Moodle's deep-linking endpoint, a deep_linking_settings claim instead. "
+                + "Reads everything directly from the client session - no authenticator or flow "
+                + "change required.";
     }
 
     @Override
@@ -94,23 +103,39 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
         logger.infov("LtiProtocolMapper: injecting LTI claims for lti_message_hint={0}", ltiMessageHint);
 
-        token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
+        boolean isDeepLinking = redirectUri != null && redirectUri.contains(LtiConstants.DEEP_LINKING_URI_MARKER);
+
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
         token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, LtiConstants.PLACEHOLDER_DEPLOYMENT_ID);
-
-        logger.infov("LtiProtocolMapper: redirect_uri client-session note = {0}", redirectUri);
-        token.getOtherClaims().put(LtiConstants.CLAIM_TARGET_LINK_URI, redirectUri);
-
-        Map<String, Object> resourceLink = new LinkedHashMap<>();
-        resourceLink.put("id", LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID);
-        resourceLink.put("title", LtiConstants.PLACEHOLDER_RESOURCE_LINK_TITLE);
-        token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
-
         token.getOtherClaims().put(LtiConstants.CLAIM_ROLES, Collections.singletonList(LtiConstants.LEARNER_ROLE));
 
-//        Map<String, Object> custom = new LinkedHashMap<>();
-//        custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
-//        token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+        if (isDeepLinking) {
+            logger.info("LtiProtocolMapper: redirect_uri matches Deep Linking endpoint; building LtiDeepLinkingRequest");
+
+            token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
+
+            Map<String, Object> deepLinkingSettings = new LinkedHashMap<>();
+            deepLinkingSettings.put("deep_link_return_url", LtiConstants.PLACEHOLDER_DEEP_LINK_RETURN_URL);
+            deepLinkingSettings.put("accept_types", Collections.singletonList("ltiResourceLink"));
+            deepLinkingSettings.put("accept_presentation_document_targets", List.of("iframe", "window"));
+            deepLinkingSettings.put("accept_multiple", false);
+            deepLinkingSettings.put("data", ltiMessageHint);
+            token.getOtherClaims().put(LtiConstants.CLAIM_DEEP_LINKING_SETTINGS, deepLinkingSettings);
+        } else {
+            token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
+
+            logger.infov("LtiProtocolMapper: redirect_uri client-session note = {0}", redirectUri);
+            token.getOtherClaims().put(LtiConstants.CLAIM_TARGET_LINK_URI, redirectUri);
+
+            Map<String, Object> resourceLink = new LinkedHashMap<>();
+            resourceLink.put("id", LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID);
+            resourceLink.put("title", LtiConstants.PLACEHOLDER_RESOURCE_LINK_TITLE);
+            token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
+
+//            Map<String, Object> custom = new LinkedHashMap<>();
+//            custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
+//            token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+        }
 
         logger.info("LtiProtocolMapper: LTI claims injected successfully");
     }
