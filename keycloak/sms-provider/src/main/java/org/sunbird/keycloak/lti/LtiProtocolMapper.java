@@ -107,10 +107,12 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
         token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, LtiConstants.PLACEHOLDER_DEPLOYMENT_ID);
-        token.getOtherClaims().put(LtiConstants.CLAIM_ROLES, Collections.singletonList(LtiConstants.LEARNER_ROLE));
+
+        String role = isDeepLinking ? LtiConstants.INSTRUCTOR_ROLE : LtiConstants.LEARNER_ROLE;
+        token.getOtherClaims().put(LtiConstants.CLAIM_ROLES, Collections.singletonList(role));
 
         if (isDeepLinking) {
-            logger.info("LtiProtocolMapper: redirect_uri matches Deep Linking endpoint; building LtiDeepLinkingRequest");
+            logger.info("LtiProtocolMapper: redirect_uri matches Deep Linking endpoint; building LtiDeepLinkingRequest as Instructor");
 
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
 

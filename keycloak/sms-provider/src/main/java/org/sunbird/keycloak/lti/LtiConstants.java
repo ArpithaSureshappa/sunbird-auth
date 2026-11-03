@@ -58,4 +58,12 @@ public final class LtiConstants {
 
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
+
+    /** Deep Linking / content-selection in Moodle's enrol_lti is a teacher-facing workflow -
+     *  confirmed directly against the "test course" published resource's settings, which gate
+     *  provisioning separately per role ("Teacher first launch provisioning mode" vs "Student
+     *  first launch provisioning mode"). Sending Learner for a Deep Linking launch routes
+     *  through the student path instead, which is why the content picker came back empty. */
+    public static final String INSTRUCTOR_ROLE =
+            "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
 }
