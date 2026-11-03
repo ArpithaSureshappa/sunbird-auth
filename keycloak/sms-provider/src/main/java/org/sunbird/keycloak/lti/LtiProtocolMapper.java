@@ -45,7 +45,9 @@ import org.keycloak.representations.IDToken;
  * launch endpoint, arriving via the same redirect_uri client-session note - that URL is the
  * only signal distinguishing the two, since there's no separate flag for it. When matched,
  * emits {@code LtiDeepLinkingRequest} with a {@code deep_linking_settings} claim instead of
- * {@code resource_link}/{@code target_link_uri}/{@code custom}, per the Deep Linking spec.
+ * {@code resource_link}/{@code custom} (not applicable to Deep Linking) - {@code
+ * target_link_uri} is still included either way, since it's a common required claim for
+ * every LTI message type, not specific to resource-link launches.
  */
 public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
@@ -108,6 +110,11 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
         token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, LtiConstants.PLACEHOLDER_DEPLOYMENT_ID);
 
+        // target_link_uri is a common required claim for every LTI message type, not just
+        // resource-link launches - it's simply "the URL this message was sent to."
+        logger.infov("LtiProtocolMapper: redirect_uri client-session note = {0}", redirectUri);
+        token.getOtherClaims().put(LtiConstants.CLAIM_TARGET_LINK_URI, redirectUri);
+
         String role = isDeepLinking ? LtiConstants.INSTRUCTOR_ROLE : LtiConstants.LEARNER_ROLE;
         token.getOtherClaims().put(LtiConstants.CLAIM_ROLES, Collections.singletonList(role));
 
@@ -125,9 +132,6 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_DEEP_LINKING_SETTINGS, deepLinkingSettings);
         } else {
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
-
-            logger.infov("LtiProtocolMapper: redirect_uri client-session note = {0}", redirectUri);
-            token.getOtherClaims().put(LtiConstants.CLAIM_TARGET_LINK_URI, redirectUri);
 
             Map<String, Object> resourceLink = new LinkedHashMap<>();
             resourceLink.put("id", LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID);
