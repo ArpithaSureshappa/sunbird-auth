@@ -138,9 +138,9 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             resourceLink.put("title", LtiConstants.PLACEHOLDER_RESOURCE_LINK_TITLE);
             token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
 
-//            Map<String, Object> custom = new LinkedHashMap<>();
-//            custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
-//            token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+            Map<String, Object> custom = new LinkedHashMap<>();
+            custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
+            token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
         }
 
         logger.info("LtiProtocolMapper: LTI claims injected successfully");
