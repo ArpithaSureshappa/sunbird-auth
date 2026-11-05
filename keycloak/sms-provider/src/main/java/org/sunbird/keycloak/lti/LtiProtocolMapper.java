@@ -125,7 +125,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
 
             Map<String, Object> deepLinkingSettings = new LinkedHashMap<>();
-            deepLinkingSettings.put("deep_link_return_url", LtiConstants.PLACEHOLDER_DEEP_LINK_RETURN_URL);
+            deepLinkingSettings.put("deep_link_return_url", LtiConstants.DEEP_LINK_RETURN_URL);
             deepLinkingSettings.put("accept_types", LtiConstants.ACCEPTED_DEEP_LINKING_TYPES);
             deepLinkingSettings.put("accept_presentation_document_targets", List.of("iframe", "window"));
             deepLinkingSettings.put("accept_multiple", false);

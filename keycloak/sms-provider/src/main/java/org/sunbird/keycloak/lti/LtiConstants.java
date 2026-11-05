@@ -50,12 +50,12 @@ public final class LtiConstants {
             "link", "file", "html", "ltiResourceLink", "image"
     );
 
-    /** PoC placeholder: no real Deep Linking Response receiving endpoint exists yet on our
-     *  side, so this URL isn't actually live - it only needs to be a syntactically valid
-     *  HTTPS URL for Moodle to render its content-select picker. Replace once the endpoint
-     *  that verifies Moodle's JWKS-signed response and persists selected content_items exists. */
-    public static final String PLACEHOLDER_DEEP_LINK_RETURN_URL =
-            "https://portal.dev.karmayogibharat.net/ltiIntegration/deeplink/return";
+    /** Real receiving endpoint: LtiController#handleDeepLinkingReturn in cios-content-service,
+     *  under that service's actual base path (/ciosIntegration/lti/...), fronted by a public,
+     *  unauthenticated Kong route direct to cios-content-service - no iGOT session exists for
+     *  external Tools posting here, so it can't go through uiproxy's protected /proxies/v8 tier. */
+    public static final String DEEP_LINK_RETURN_URL =
+            "https://portal.dev.karmayogibharat.net/ciosIntegration/lti/deeplink/return";
 
     /** PoC placeholders: no provider/resource-link registry exists since the removal of
      *  cios-content-service's LTI package. Single hardcoded deployment, matching the one
