@@ -1,5 +1,7 @@
 package org.sunbird.keycloak.lti;
 
+import java.util.List;
+
 /** Shared keys/URIs for the LTI 1.3 marker authenticator + protocol mapper pair. */
 public final class LtiConstants {
 
@@ -29,11 +31,24 @@ public final class LtiConstants {
     public static final String MESSAGE_TYPE_DEEP_LINKING_REQUEST = "LtiDeepLinkingRequest";
     public static final String LTI_VERSION = "1.3.0";
 
-    /** Substring marker used to detect a Deep Linking launch: Moodle's deep-linking endpoint
-     *  is a distinct URL (launch_deeplink.php) from its resource-link launch endpoint
-     *  (launch.php), and both arrive via the same redirect_uri client-session note - no
-     *  separate flag exists to tell them apart, so the URL itself is the signal. */
-    public static final String DEEP_LINKING_URI_MARKER = "launch_deeplink.php";
+    /** Substring markers used to detect a Deep Linking launch: every Tool's deep-linking
+     *  endpoint is a distinct URL from its resource-link launch endpoint, arriving via the
+     *  same redirect_uri client-session note - no separate flag exists to tell them apart, so
+     *  the URL itself is the signal. Each Tool names its endpoint differently (Moodle:
+     *  "launch_deeplink.php", Coursera: ".../deep-linking/launch"), so this is a per-Tool list,
+     *  not a single pattern - extend it here when a new Tool is onboarded, until a real
+     *  per-Tool registry replaces this entirely. */
+    public static final List<String> DEEP_LINKING_URI_MARKERS = List.of(
+            "launch_deeplink.php",
+            "deep-linking/launch"
+    );
+
+    /** Full set of LTI Deep Linking content-item types (spec section on Content Item Types).
+     *  Not narrowed to just "ltiResourceLink" - a Tool's content picker shouldn't be
+     *  artificially restricted to one item type when the Platform can accept any of these. */
+    public static final List<String> ACCEPTED_DEEP_LINKING_TYPES = List.of(
+            "link", "file", "html", "ltiResourceLink", "image"
+    );
 
     /** PoC placeholder: no real Deep Linking Response receiving endpoint exists yet on our
      *  side, so this URL isn't actually live - it only needs to be a syntactically valid

@@ -40,10 +40,10 @@ import org.keycloak.representations.IDToken;
  * <p>deployment_id / resource_link are PoC placeholders (see {@link LtiConstants}) until the
  * provider/content registry that used to live in cios-content-service is rebuilt elsewhere.
  *
- * <p>Also builds Deep Linking requests: Moodle's deep-linking endpoint
- * ({@value LtiConstants#DEEP_LINKING_URI_MARKER}) is a distinct URL from its resource-link
- * launch endpoint, arriving via the same redirect_uri client-session note - that URL is the
- * only signal distinguishing the two, since there's no separate flag for it. When matched,
+ * <p>Also builds Deep Linking requests: each Tool's deep-linking endpoint (see {@link
+ * LtiConstants#DEEP_LINKING_URI_MARKERS}) is a distinct URL from its resource-link launch
+ * endpoint, arriving via the same redirect_uri client-session note - that URL is the only
+ * signal distinguishing the two, since there's no separate flag for it. When matched,
  * emits {@code LtiDeepLinkingRequest} with a {@code deep_linking_settings} claim instead of
  * {@code resource_link}/{@code custom} (not applicable to Deep Linking) - {@code
  * target_link_uri} is still included either way, since it's a common required claim for
@@ -105,7 +105,8 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
         logger.infov("LtiProtocolMapper: injecting LTI claims for lti_message_hint={0}", ltiMessageHint);
 
-        boolean isDeepLinking = redirectUri != null && redirectUri.contains(LtiConstants.DEEP_LINKING_URI_MARKER);
+        boolean isDeepLinking = redirectUri != null
+                && LtiConstants.DEEP_LINKING_URI_MARKERS.stream().anyMatch(redirectUri::contains);
 
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
         token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, LtiConstants.PLACEHOLDER_DEPLOYMENT_ID);
@@ -125,7 +126,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
             Map<String, Object> deepLinkingSettings = new LinkedHashMap<>();
             deepLinkingSettings.put("deep_link_return_url", LtiConstants.PLACEHOLDER_DEEP_LINK_RETURN_URL);
-            deepLinkingSettings.put("accept_types", Collections.singletonList("ltiResourceLink"));
+            deepLinkingSettings.put("accept_types", LtiConstants.ACCEPTED_DEEP_LINKING_TYPES);
             deepLinkingSettings.put("accept_presentation_document_targets", List.of("iframe", "window"));
             deepLinkingSettings.put("accept_multiple", false);
             deepLinkingSettings.put("data", ltiMessageHint);
