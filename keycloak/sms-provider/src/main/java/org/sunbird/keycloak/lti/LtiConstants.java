@@ -55,7 +55,7 @@ public final class LtiConstants {
      *  unauthenticated Kong route direct to cios-content-service - no iGOT session exists for
      *  external Tools posting here, so it can't go through uiproxy's protected /proxies/v8 tier. */
     public static final String DEEP_LINK_RETURN_URL =
-            "https://portal.dev.karmayogibharat.net/ciosIntegration/lti/deeplink/return";
+            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/deeplink/return";
 
     /** PoC placeholders: no provider/resource-link registry exists since the removal of
      *  cios-content-service's LTI package. Single hardcoded deployment, matching the one
