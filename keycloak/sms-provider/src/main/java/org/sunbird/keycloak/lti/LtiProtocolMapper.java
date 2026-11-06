@@ -134,14 +134,35 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         } else {
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
 
-            Map<String, Object> resourceLink = new LinkedHashMap<>();
-            resourceLink.put("id", LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID);
-            resourceLink.put("title", LtiConstants.PLACEHOLDER_RESOURCE_LINK_TITLE);
-            token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
+            boolean isCoursera = redirectUri != null && redirectUri.contains(LtiConstants.COURSERA_LAUNCH_URI_MARKER);
 
-            Map<String, Object> custom = new LinkedHashMap<>();
-            custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
-            token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+            if (isCoursera) {
+                logger.info("LtiProtocolMapper: redirect_uri matches Coursera; building Coursera-shaped custom claim");
+
+                Map<String, Object> resourceLink = new LinkedHashMap<>();
+                resourceLink.put("id", LtiConstants.COURSERA_COURSE_ID);
+                resourceLink.put("title", LtiConstants.COURSERA_RESOURCE_TITLE);
+                token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
+
+                // Coursera's launch.php expects this structured shape (confirmed via its own
+                // LtiDeepLinkingResponse content_items), not Moodle's single opaque custom.id -
+                // sending Moodle's shape here is exactly what produced "Failed to convert deeplink".
+                Map<String, Object> custom = new LinkedHashMap<>();
+                custom.put("link_type", LtiConstants.COURSERA_LINK_TYPE);
+                custom.put("course_id", LtiConstants.COURSERA_COURSE_ID);
+                custom.put("organization_id", LtiConstants.COURSERA_ORGANIZATION_ID);
+                custom.put("program_id", LtiConstants.COURSERA_PROGRAM_ID);
+                token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+            } else {
+                Map<String, Object> resourceLink = new LinkedHashMap<>();
+                resourceLink.put("id", LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID);
+                resourceLink.put("title", LtiConstants.PLACEHOLDER_RESOURCE_LINK_TITLE);
+                token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
+
+                Map<String, Object> custom = new LinkedHashMap<>();
+                custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
+                token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+            }
         }
 
         logger.info("LtiProtocolMapper: LTI claims injected successfully");
