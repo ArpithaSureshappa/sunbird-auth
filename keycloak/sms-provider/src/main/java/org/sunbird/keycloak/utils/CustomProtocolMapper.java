@@ -38,17 +38,6 @@ public class CustomProtocolMapper extends AbstractOIDCProtocolMapper implements 
         return "customer-igot-mapper";
     }
 
-    @Override
-    public int getPriority() {
-        // Built-in mappers on this client (e.g. the "email" User Property mapper, and this
-        // mapper itself) default to priority 0 and tie-break in an order this class doesn't
-        // control - confirmed via the admin console's Dedicated scopes > Mappers list, where
-        // "client roles" is the only other mapper here with a non-zero priority (40). A higher
-        // number runs later, so this must be higher than every mapper whose claims it needs to
-        // override (currently just "email" at 0) to reliably win instead of being overwritten.
-        return 100;
-    }
-
     protected void setClaim(IDToken token, ProtocolMapperModel mappingModel, UserSessionModel userSession) {
         UserModel user = userSession.getUser();
         List<String> orgList = user.getAttributes().get("org");
@@ -57,14 +46,6 @@ public class CustomProtocolMapper extends AbstractOIDCProtocolMapper implements 
             org = orgList.get(0);
         token.getOtherClaims().put("org", org);
         token.getOtherClaims().put("user_roles", user.getAttributes().get("roles"));
-
-        // Platform-wide: replace the real email with a synthetic userid@karmayogi.com derived
-        // from sub ("f:<federation-id>:<userid>"), for every login, every client.
-        String subject = token.getSubject();
-        if (subject != null && subject.contains(":")) {
-            String userId = subject.substring(subject.lastIndexOf(':') + 1);
-            token.setEmail(userId + "@karmayogi.com");
-        }
     }
 
     public static ProtocolMapperModel create(String name, boolean accessToken, boolean idToken, boolean userInfo) {
