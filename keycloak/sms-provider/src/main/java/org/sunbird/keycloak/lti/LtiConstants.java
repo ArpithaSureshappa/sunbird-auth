@@ -70,6 +70,23 @@ public final class LtiConstants {
      *  matching custom.id claim, separate from resource_link.id. */
     public static final String PLACEHOLDER_CUSTOM_ID = "602ba6d8-da5e-4ffa-8ed3-ffeab3211ebe";
 
+    /** Substring marker identifying a Coursera-bound resource-link launch (redirect_uri host),
+     *  same per-Tool-list pattern as {@link #DEEP_LINKING_URI_MARKERS} - Coursera's custom
+     *  claim shape is structurally different from Moodle's (a content/org/program id triple,
+     *  not a single opaque UUID), confirmed via the "Failed to convert deeplink" error Coursera
+     *  returned when it received Moodle's placeholder UUID in custom.id instead. */
+    public static final String COURSERA_LAUNCH_URI_MARKER = "coursera.org";
+
+    /** Real values for the one PoC Coursera resource ("Data Analysis with R Programming"),
+     *  obtained directly from Coursera's own LtiDeepLinkingResponse content_items - not
+     *  invented placeholders. custom.id is not used for Coursera; it expects this structured
+     *  shape instead (link_type/course_id/organization_id/program_id). */
+    public static final String COURSERA_RESOURCE_TITLE = "Data Analysis with R Programming";
+    public static final String COURSERA_LINK_TYPE = "COURSE";
+    public static final String COURSERA_COURSE_ID = "joRZVwp9Eeun_RJEc0KNDw";
+    public static final String COURSERA_ORGANIZATION_ID = "38fNLqIAQ5C9FXQVtAwAOQ";
+    public static final String COURSERA_PROGRAM_ID = "XKGCT3amR96hgk92pufecQ";
+
 
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
