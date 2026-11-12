@@ -125,8 +125,8 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
 
             Map<String, Object> deepLinkingSettings = new LinkedHashMap<>();
-            deepLinkingSettings.put("deep_link_return_url", LtiConstants.DEEP_LINK_RETURN_URL);
-            deepLinkingSettings.put("accept_types", LtiConstants.ACCEPTED_DEEP_LINKING_TYPES);
+            deepLinkingSettings.put("deep_link_return_url", LtiConstants.DEEP_LINK_RETURN_URL);//igot return url
+            deepLinkingSettings.put("accept_types", LtiConstants.ACCEPTED_DEEP_LINKING_TYPES);//"link", "file", "html",
             deepLinkingSettings.put("accept_presentation_document_targets", List.of("iframe", "window"));
             deepLinkingSettings.put("accept_multiple", false);
             deepLinkingSettings.put("data", ltiMessageHint);
@@ -148,10 +148,10 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
                 // LtiDeepLinkingResponse content_items), not Moodle's single opaque custom.id -
                 // sending Moodle's shape here is exactly what produced "Failed to convert deeplink".
                 Map<String, Object> custom = new LinkedHashMap<>();
-              //  custom.put("link_type", LtiConstants.COURSERA_LINK_TYPE);
+                custom.put("link_type", LtiConstants.COURSERA_LINK_TYPE);
                 custom.put("course_id", LtiConstants.COURSERA_COURSE_ID);
-              //  custom.put("organization_id", LtiConstants.COURSERA_ORGANIZATION_ID);
-              //  custom.put("program_id", LtiConstants.COURSERA_PROGRAM_ID);
+                custom.put("organization_id", LtiConstants.COURSERA_ORGANIZATION_ID);
+                custom.put("program_id", LtiConstants.COURSERA_PROGRAM_ID);
                 token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
             } else {
                 Map<String, Object> resourceLink = new LinkedHashMap<>();
