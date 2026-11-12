@@ -105,17 +105,6 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
         logger.infov("LtiProtocolMapper: injecting LTI claims for lti_message_hint={0}", ltiMessageHint);
 
-        // Tools must not see the learner's real email - replace it with a synthetic
-        // {userid}@karmayogi.com derived from sub ("f:<federation-id>:<userid>"), for every LTI
-        // message type. Relies on this mapper running after Keycloak's built-in Email mapper on
-        // the client - verify against a fresh decoded token if the real email still shows up.
-        String subject = token.getSubject();
-        if (subject != null && subject.contains(":")) {
-            String userId = subject.substring(subject.lastIndexOf(':') + 1);
-            token.setEmail(userId + "@karmayogi.com");
-            logger.infov("LtiProtocolMapper: overrode email claim to {0}", userId + "@karmayogi.com");
-        }
-
         boolean isDeepLinking = redirectUri != null
                 && LtiConstants.DEEP_LINKING_URI_MARKERS.stream().anyMatch(redirectUri::contains);
 
