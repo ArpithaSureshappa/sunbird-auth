@@ -88,6 +88,16 @@ public final class LtiConstants {
     public static final String COURSERA_PROGRAM_ID = "XKGCT3amR96hgk92pufecQ";
 
 
+    /** Substring marker identifying an Adobe Learning Manager-bound resource-link launch
+     *  (redirect_uri host), same per-Tool-list pattern as {@link #COURSERA_LAUNCH_URI_MARKER}.
+     *  Unlike Coursera, Adobe identifies the specific course directly via an exportUuid query
+     *  param on its own launch URL (confirmed from the two real sample course links provided -
+     *  same /launch path, different exportUuid), rather than needing a structured custom claim -
+     *  so resource_link.id/custom.id are read dynamically from redirect_uri's exportUuid, not
+     *  hardcoded per course. */
+    public static final String ADOBE_LAUNCH_URI_MARKER = "learningmanagereu.adobe.com";
+    public static final String ADOBE_EXPORT_UUID_PARAM = "exportUuid";
+
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
 

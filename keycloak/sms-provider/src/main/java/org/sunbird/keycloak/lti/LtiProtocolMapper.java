@@ -135,8 +135,22 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
 
             boolean isCoursera = redirectUri != null && redirectUri.contains(LtiConstants.COURSERA_LAUNCH_URI_MARKER);
+            boolean isAdobe = redirectUri != null && redirectUri.contains(LtiConstants.ADOBE_LAUNCH_URI_MARKER);
 
-            if (isCoursera) {
+            if (isAdobe) {
+                logger.info("LtiProtocolMapper: redirect_uri matches Adobe Learning Manager; using exportUuid from target_link_uri as the resource identifier");
+
+                String exportUuid = extractQueryParam(redirectUri, LtiConstants.ADOBE_EXPORT_UUID_PARAM);
+                String resourceId = exportUuid != null ? exportUuid : LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID;
+
+                Map<String, Object> resourceLink = new LinkedHashMap<>();
+                resourceLink.put("id", resourceId);
+                token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
+
+                Map<String, Object> custom = new LinkedHashMap<>();
+                custom.put("id", resourceId);
+                token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
+            } else if (isCoursera) {
                 logger.info("LtiProtocolMapper: redirect_uri matches Coursera; building Coursera-shaped custom claim");
 
                 Map<String, Object> resourceLink = new LinkedHashMap<>();
@@ -166,6 +180,28 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         }
 
         logger.info("LtiProtocolMapper: LTI claims injected successfully");
+    }
+
+    /**
+     * Plain query-string lookup, no new dependency needed - url is the redirect_uri client
+     * session note (e.g. Adobe's own launch URL with ?exportUuid=...), not something requiring
+     * full URI validation.
+     */
+    private static String extractQueryParam(String url, String paramName) {
+        if (url == null) {
+            return null;
+        }
+        int queryStart = url.indexOf('?');
+        if (queryStart < 0) {
+            return null;
+        }
+        for (String pair : url.substring(queryStart + 1).split("&")) {
+            int eq = pair.indexOf('=');
+            if (eq > 0 && pair.substring(0, eq).equals(paramName)) {
+                return pair.substring(eq + 1);
+            }
+        }
+        return null;
     }
 
     public static ProtocolMapperModel create(String name, boolean accessToken, boolean idToken, boolean userInfo) {
