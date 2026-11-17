@@ -116,6 +116,14 @@ public final class LtiConstants {
     public static final String PLACEHOLDER_LINEITEM_URL =
             "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems/1/lineitem";
 
+    /** Adobe Learning Manager's own backend only supports a {@code sub} claim up to this many
+     *  characters (confirmed directly by Adobe engineering after a HAR-based investigation into
+     *  a generic 500 on launch) - Keycloak's default subject for a federated user is
+     *  {@code f:<federation-link-uuid>:<raw-user-id>}, which runs to 75 chars and silently
+     *  crashes Adobe's launch processing. Only applied to Adobe-bound tokens - no other Tool has
+     *  reported this limit, so their {@code sub} is left as Keycloak's default. */
+    public static final int MAX_SUBJECT_LENGTH_FOR_LTI = 62;
+
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
 

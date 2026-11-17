@@ -146,6 +146,18 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             boolean isAdobe = redirectUri != null && redirectUri.contains(LtiConstants.ADOBE_LAUNCH_URI_MARKER);
 
             if (isAdobe) {
+                // Adobe's own backend only supports a sub up to MAX_SUBJECT_LENGTH_FOR_LTI chars
+                // (confirmed by Adobe engineering - see that constant's javadoc) and otherwise
+                // crashes with a generic 500 during launch processing. Scoped to Adobe only -
+                // other Tools haven't reported this limit, so their sub is left untouched.
+                String originalSubject = token.getSubject();
+                String shortenedSubject = shortenSubjectForLti(originalSubject);
+                if (!shortenedSubject.equals(originalSubject)) {
+                    logger.infov("LtiProtocolMapper: sub exceeds {0} chars ({1}); shortening for Adobe: {2} -> {3}",
+                            LtiConstants.MAX_SUBJECT_LENGTH_FOR_LTI, originalSubject.length(), originalSubject, shortenedSubject);
+                    token.setSubject(shortenedSubject);
+                }
+
                 // Adobe's own /login_initiations handler strips the query string off
                 // target_link_uri before echoing it back as redirect_uri (confirmed from a real
                 // captured launch: target_link_uri claim came back as plain ".../launch", no
@@ -197,6 +209,28 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         }
 
         logger.info("LtiProtocolMapper: LTI claims injected successfully");
+    }
+
+    /**
+     * See {@link LtiConstants#MAX_SUBJECT_LENGTH_FOR_LTI} javadoc. Keycloak's federated-user
+     * subject format is {@code f:<federation-link-uuid>:<raw-user-id>} - stripping down to the
+     * part after the last colon recovers the raw user id (typically a 36-char UUID), which is
+     * still stable/unique per user and comfortably under the limit. Falls back to the original
+     * value unchanged if it's already short enough, or if it doesn't match the expected
+     * federated shape (so a sub that's long for some other reason isn't mangled silently).
+     */
+    private static String shortenSubjectForLti(String originalSubject) {
+        if (originalSubject == null || originalSubject.length() <= LtiConstants.MAX_SUBJECT_LENGTH_FOR_LTI) {
+            return originalSubject;
+        }
+        int lastColon = originalSubject.lastIndexOf(':');
+        if (lastColon >= 0 && lastColon < originalSubject.length() - 1) {
+            String rawUserId = originalSubject.substring(lastColon + 1);
+            if (rawUserId.length() <= LtiConstants.MAX_SUBJECT_LENGTH_FOR_LTI) {
+                return rawUserId;
+            }
+        }
+        return originalSubject;
     }
 
     /**
