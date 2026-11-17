@@ -134,6 +134,14 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         } else {
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
 
+            // AGS endpoint claim - required by Adobe/Coursera to accept a resource-link launch
+            // even without real grade sync; see LtiConstants.CLAIM_AGS_ENDPOINT javadoc.
+            Map<String, Object> agsEndpoint = new LinkedHashMap<>();
+            agsEndpoint.put("scope", LtiConstants.AGS_SCOPES);
+            agsEndpoint.put("lineitems", LtiConstants.PLACEHOLDER_LINEITEMS_URL);
+            agsEndpoint.put("lineitem", LtiConstants.PLACEHOLDER_LINEITEM_URL);
+            token.getOtherClaims().put(LtiConstants.CLAIM_AGS_ENDPOINT, agsEndpoint);
+
             boolean isCoursera = redirectUri != null && redirectUri.contains(LtiConstants.COURSERA_LAUNCH_URI_MARKER);
             boolean isAdobe = redirectUri != null && redirectUri.contains(LtiConstants.ADOBE_LAUNCH_URI_MARKER);
 

@@ -98,6 +98,24 @@ public final class LtiConstants {
     public static final String ADOBE_LAUNCH_URI_MARKER = "learningmanagereu.adobe.com";
     public static final String ADOBE_EXPORT_UUID_PARAM = "exportUuid";
 
+    /** Assignment and Grade Services (AGS) endpoint claim - required by some Tools (confirmed:
+     *  Adobe Learning Manager, Coursera) for a resource-link launch to succeed, even when the
+     *  Platform never implements grade sync. No AGS backend exists here (lineitems/lineitem
+     *  URLs below are not real endpoints), matching Adobe's own documented guidance that a
+     *  placeholder lineitem URL is acceptable when grade sync isn't implemented. Not emitted
+     *  for Deep Linking requests - AGS only applies to resource-link launches. */
+    public static final String CLAIM_AGS_ENDPOINT = "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
+    public static final List<String> AGS_SCOPES = List.of(
+            "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem.readonly",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
+            "https://purl.imsglobal.org/spec/lti-ags/scope/score"
+    );
+    public static final String PLACEHOLDER_LINEITEMS_URL =
+            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems";
+    public static final String PLACEHOLDER_LINEITEM_URL =
+            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems/1/lineitem";
+
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
 
