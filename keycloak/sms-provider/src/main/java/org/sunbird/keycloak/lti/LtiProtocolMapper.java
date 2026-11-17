@@ -138,17 +138,26 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             boolean isAdobe = redirectUri != null && redirectUri.contains(LtiConstants.ADOBE_LAUNCH_URI_MARKER);
 
             if (isAdobe) {
-                logger.info("LtiProtocolMapper: redirect_uri matches Adobe Learning Manager; using exportUuid from target_link_uri as the resource identifier");
-
-                String exportUuid = extractQueryParam(redirectUri, LtiConstants.ADOBE_EXPORT_UUID_PARAM);
+                // Adobe's own /login_initiations handler strips the query string off
+                // target_link_uri before echoing it back as redirect_uri (confirmed from a real
+                // captured launch: target_link_uri claim came back as plain ".../launch", no
+                // ?exportUuid=... at all) - so exportUuid can't be read from redirect_uri here.
+                // lti_message_hint is the one value proven to survive the round trip, so the test
+                // harness puts the raw exportUuid there instead. Adobe's own error page names the
+                // field it wants verbatim ("valid ExportUuid parameter"), so custom uses that
+                // exact key rather than the generic "id" used for Moodle's placeholder shape.
+                // ltiMessageHint is already confirmed non-null/non-empty by the guard clause above.
+                String exportUuid = ltiMessageHint;
                 String resourceId = exportUuid != null ? exportUuid : LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID;
+
+                logger.infov("LtiProtocolMapper: redirect_uri matches Adobe Learning Manager; using exportUuid={0} from lti_message_hint", exportUuid);
 
                 Map<String, Object> resourceLink = new LinkedHashMap<>();
                 resourceLink.put("id", resourceId);
                 token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
 
                 Map<String, Object> custom = new LinkedHashMap<>();
-                custom.put("id", resourceId);
+                custom.put(LtiConstants.ADOBE_EXPORT_UUID_PARAM, resourceId);
                 token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
             } else if (isCoursera) {
                 logger.info("LtiProtocolMapper: redirect_uri matches Coursera; building Coursera-shaped custom claim");
