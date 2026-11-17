@@ -111,10 +111,10 @@ public final class LtiConstants {
             "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
             "https://purl.imsglobal.org/spec/lti-ags/scope/score"
     );
-//    public static final String PLACEHOLDER_LINEITEMS_URL =
-//            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems";
-//    public static final String PLACEHOLDER_LINEITEM_URL =
-//            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems/1/lineitem";
+    public static final String PLACEHOLDER_LINEITEMS_URL =
+            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems";
+    public static final String PLACEHOLDER_LINEITEM_URL =
+            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems/1/lineitem";
 
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
