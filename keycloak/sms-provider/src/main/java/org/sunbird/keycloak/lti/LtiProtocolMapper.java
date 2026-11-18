@@ -1,5 +1,13 @@
 package org.sunbird.keycloak.lti;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.MissingNode;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -142,8 +150,8 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             agsEndpoint.put("lineitem", LtiConstants.PLACEHOLDER_LINEITEM_URL);
             token.getOtherClaims().put(LtiConstants.CLAIM_AGS_ENDPOINT, agsEndpoint);
 
-            boolean isCoursera = redirectUri != null && redirectUri.contains(LtiConstants.COURSERA_LAUNCH_URI_MARKER);
             boolean isAdobe = redirectUri != null && redirectUri.contains(LtiConstants.ADOBE_LAUNCH_URI_MARKER);
+            boolean isCourseLaunch = ltiMessageHint.startsWith(LtiConstants.LTI_MESSAGE_HINT_COURSE_LAUNCH_PREFIX);
 
             if (isAdobe) {
                 // Adobe's own backend only supports a sub up to MAX_SUBJECT_LENGTH_FOR_LTI chars
@@ -179,23 +187,34 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
                 Map<String, Object> custom = new LinkedHashMap<>();
                 custom.put(LtiConstants.ADOBE_EXPORT_UUID_PARAM, resourceId);
                 token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
-            } else if (isCoursera) {
-                logger.info("LtiProtocolMapper: redirect_uri matches Coursera; building Coursera-shaped custom claim");
+            } else if (isCourseLaunch) {
+                // Real course launch: lti_message_hint carries "courseLaunch:{contentId}" -
+                // contentId is cb-pores-service's own content identifier (the URL the frontend
+                // builds includes it verbatim, e.g. "courseLaunch:ext_114467417409765376132").
+                // Rather than hardcoding any one provider's custom-claim shape here, read the
+                // course's own providerCustomClaim - it already holds Moodle's {"id": ...} shape
+                // or Coursera's {link_type, course_id, organization_id, program_id, ...} shape,
+                // captured verbatim from that provider at content-onboarding time. No per-Tool
+                // branching needed - whatever shape the course's own record has is what's sent.
+                String contentId = ltiMessageHint.substring(LtiConstants.LTI_MESSAGE_HINT_COURSE_LAUNCH_PREFIX.length());
+                logger.infov("LtiProtocolMapper: courseLaunch message hint; fetching providerCustomClaim for contentId={0}", contentId);
+
+                JsonNode providerCustomClaim = fetchProviderCustomClaim(contentId);
 
                 Map<String, Object> resourceLink = new LinkedHashMap<>();
-                resourceLink.put("id", LtiConstants.COURSERA_COURSE_ID);
-               // resourceLink.put("title", LtiConstants.COURSERA_RESOURCE_TITLE);
+                resourceLink.put("id", contentId);
                 token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
 
-                // Coursera's launch.php expects this structured shape (confirmed via its own
-                // LtiDeepLinkingResponse content_items), not Moodle's single opaque custom.id -
-                // sending Moodle's shape here is exactly what produced "Failed to convert deeplink".
-                Map<String, Object> custom = new LinkedHashMap<>();
-                custom.put("link_type", LtiConstants.COURSERA_LINK_TYPE);
-                custom.put("course_id", LtiConstants.COURSERA_COURSE_ID);
-                custom.put("organization_id", LtiConstants.COURSERA_ORGANIZATION_ID);
-                custom.put("program_id", LtiConstants.COURSERA_PROGRAM_ID);
-                custom.put("coursera_source_context_id", null);
+                Map<String, Object> custom;
+                if (!providerCustomClaim.isMissingNode() && !providerCustomClaim.isNull() && providerCustomClaim.isObject()) {
+                    custom = new ObjectMapper().convertValue(providerCustomClaim, LinkedHashMap.class);
+                } else {
+                    // Course lookup failed or has no providerCustomClaim recorded - degrade to
+                    // Moodle's safe generic shape rather than blocking login entirely.
+                    logger.warnv("LtiProtocolMapper: no providerCustomClaim found for contentId={0}; falling back to {{id: contentId}}", contentId);
+                    custom = new LinkedHashMap<>();
+                    custom.put("id", contentId);
+                }
                 token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
             } else {
                 Map<String, Object> resourceLink = new LinkedHashMap<>();
@@ -232,6 +251,56 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             }
         }
         return originalSubject;
+    }
+
+    /**
+     * Reads the given course's own {@code providerCustomClaim} from cb-pores-service's
+     * content-read API, so Coursera/Moodle/future-provider launches send whatever custom-claim
+     * shape was captured verbatim for that course at onboarding time, instead of one hardcoded
+     * shape baked into this mapper. Returns {@link MissingNode} on any failure (unreachable
+     * service, 404, malformed response, missing field) - a failed lookup must degrade the
+     * launch's custom claim, never block token issuance entirely, same philosophy as every
+     * other live-fetch in this class.
+     */
+    private static JsonNode fetchProviderCustomClaim(String contentId) {
+        String baseUrl = System.getenv(LtiConstants.CB_PORES_SERVICE_BASE_URL_ENV);
+        if (baseUrl == null || baseUrl.isEmpty()) {
+            logger.warnv("LtiProtocolMapper: {0} env var not set; cannot fetch providerCustomClaim for contentId={1}", LtiConstants.CB_PORES_SERVICE_BASE_URL_ENV, contentId);
+            return MissingNode.getInstance();
+        }
+        String url = baseUrl + LtiConstants.CONTENT_READ_PATH + contentId;
+        HttpURLConnection connection = null;
+        try {
+            connection = (HttpURLConnection) new URL(url).openConnection();
+            connection.setRequestMethod("GET");
+            connection.setConnectTimeout(5000);
+            connection.setReadTimeout(5000);
+
+            int status = connection.getResponseCode();
+            if (status != 200) {
+                logger.warnv("LtiProtocolMapper: content-read API returned HTTP {0} for contentId={1}", status, contentId);
+                return MissingNode.getInstance();
+            }
+
+            StringBuilder body = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(
+                    new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    body.append(line);
+                }
+            }
+
+            JsonNode root = new ObjectMapper().readTree(body.toString());
+            return root.path(LtiConstants.CONTENT_FIELD).path(LtiConstants.PROVIDER_CUSTOM_CLAIM_FIELD);
+        } catch (Exception e) {
+            logger.warnv(e, "LtiProtocolMapper: failed to fetch providerCustomClaim for contentId={0} from {1}", contentId, url);
+            return MissingNode.getInstance();
+        } finally {
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
     }
 
     /**

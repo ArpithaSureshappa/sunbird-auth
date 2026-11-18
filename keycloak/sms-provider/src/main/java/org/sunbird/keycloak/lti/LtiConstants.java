@@ -70,26 +70,25 @@ public final class LtiConstants {
      *  matching custom.id claim, separate from resource_link.id. */
     public static final String PLACEHOLDER_CUSTOM_ID = "602ba6d8-da5e-4ffa-8ed3-ffeab3211ebe";
 
-    /** Substring marker identifying a Coursera-bound resource-link launch (redirect_uri host),
-     *  same per-Tool-list pattern as {@link #DEEP_LINKING_URI_MARKERS} - Coursera's custom
-     *  claim shape is structurally different from Moodle's (a content/org/program id triple,
-     *  not a single opaque UUID), confirmed via the "Failed to convert deeplink" error Coursera
-     *  returned when it received Moodle's placeholder UUID in custom.id instead. */
-    public static final String COURSERA_LAUNCH_URI_MARKER = "coursera.org";
+    /** Prefix used on {@code lti_message_hint} for a real course launch (as opposed to Adobe's
+     *  raw exportUuid, or a Deep Linking request) - value after the prefix is the course's
+     *  {@code contentId} in cb-pores-service, used to look up that course's own
+     *  {@code providerCustomClaim} dynamically rather than hardcoding any one provider's shape.
+     *  Matches the {@code {type}:{value}} convention already used elsewhere for this field. */
+    public static final String LTI_MESSAGE_HINT_COURSE_LAUNCH_PREFIX = "courseLaunch:";
 
-    /** Real values for the one PoC Coursera resource, obtained directly from Coursera's own
-     *  LtiDeepLinkingResponse content_items - not invented placeholders. custom.id is not used
-     *  for Coursera; it expects this structured shape instead
-     *  (link_type/course_id/organization_id/program_id/coursera_source_context_id). */
-    public static final String COURSERA_RESOURCE_TITLE = "AI For Everyone";
-    public static final String COURSERA_LINK_TYPE = "COURSE";
-    public static final String COURSERA_COURSE_ID = "daG-a-O1EeijKBISCWxf6g";
-    public static final String COURSERA_ORGANIZATION_ID = "38fNLqIAQ5C9FXQVtAwAOQ";
-    public static final String COURSERA_PROGRAM_ID = "XKGCT3amR96hgk92pufecQ";
-
+    /** cb-pores-service's content-read API - public/unauthenticated at the application layer
+     *  (confirmed: no auth header, filter, or interceptor on this endpoint). Base URL value
+     *  itself is NOT a constant here - it's set per-deployment to cb-pores-service's directly
+     *  reachable service IP for Keycloak's host, same convention as
+     *  {@code sunbird_user_service_base_url} in UserSearchService. */
+    public static final String CB_PORES_SERVICE_BASE_URL_ENV = "cb_pores_service_base_url";
+    public static final String CONTENT_READ_PATH = "/cios/v1/content/read/";
+    public static final String CONTENT_FIELD = "content";
+    public static final String PROVIDER_CUSTOM_CLAIM_FIELD = "providerCustomClaim";
 
     /** Substring marker identifying an Adobe Learning Manager-bound resource-link launch
-     *  (redirect_uri host), same per-Tool-list pattern as {@link #COURSERA_LAUNCH_URI_MARKER}.
+     *  (redirect_uri host), same per-Tool-list pattern as {@link #DEEP_LINKING_URI_MARKERS}.
      *  Unlike Coursera, Adobe identifies the specific course directly via an exportUuid query
      *  param on its own launch URL (confirmed from the two real sample course links provided -
      *  same /launch path, different exportUuid), rather than needing a structured custom claim -
