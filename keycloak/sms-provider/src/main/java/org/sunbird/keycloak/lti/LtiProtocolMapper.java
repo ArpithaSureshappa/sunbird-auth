@@ -195,6 +195,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
                 custom.put("course_id", LtiConstants.COURSERA_COURSE_ID);
                 custom.put("organization_id", LtiConstants.COURSERA_ORGANIZATION_ID);
                 custom.put("program_id", LtiConstants.COURSERA_PROGRAM_ID);
+                custom.put("coursera_source_context_id", null);
                 token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
             } else {
                 Map<String, Object> resourceLink = new LinkedHashMap<>();

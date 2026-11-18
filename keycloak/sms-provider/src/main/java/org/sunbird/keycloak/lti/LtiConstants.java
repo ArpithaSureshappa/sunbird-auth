@@ -77,13 +77,13 @@ public final class LtiConstants {
      *  returned when it received Moodle's placeholder UUID in custom.id instead. */
     public static final String COURSERA_LAUNCH_URI_MARKER = "coursera.org";
 
-    /** Real values for the one PoC Coursera resource ("Data Analysis with R Programming"),
-     *  obtained directly from Coursera's own LtiDeepLinkingResponse content_items - not
-     *  invented placeholders. custom.id is not used for Coursera; it expects this structured
-     *  shape instead (link_type/course_id/organization_id/program_id). */
-    public static final String COURSERA_RESOURCE_TITLE = "Data Analysis with R Programming";
+    /** Real values for the one PoC Coursera resource, obtained directly from Coursera's own
+     *  LtiDeepLinkingResponse content_items - not invented placeholders. custom.id is not used
+     *  for Coursera; it expects this structured shape instead
+     *  (link_type/course_id/organization_id/program_id/coursera_source_context_id). */
+    public static final String COURSERA_RESOURCE_TITLE = "AI For Everyone";
     public static final String COURSERA_LINK_TYPE = "COURSE";
-    public static final String COURSERA_COURSE_ID = "joRZVwp9Eeun_RJEc0KNDw";
+    public static final String COURSERA_COURSE_ID = "daG-a-O1EeijKBISCWxf6g";
     public static final String COURSERA_ORGANIZATION_ID = "38fNLqIAQ5C9FXQVtAwAOQ";
     public static final String COURSERA_PROGRAM_ID = "XKGCT3amR96hgk92pufecQ";
 
