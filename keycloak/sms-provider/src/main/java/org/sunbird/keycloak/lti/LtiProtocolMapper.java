@@ -1,5 +1,9 @@
 package org.sunbird.keycloak.lti;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -19,36 +23,6 @@ import org.keycloak.protocol.oidc.mappers.UserInfoTokenMapper;
 import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.representations.IDToken;
 
-/**
- * Injects the LTI 1.3 Core Message claims into the token, but only when the incoming authorize
- * request carried {@code lti_message_hint}. Deliberately reads it directly from the
- * {@link ClientSessionContext}'s {@code AuthenticatedClientSessionModel} - Keycloak copies the
- * authentication session's client notes (including non-standard request params, stored under
- * the {@code client_request_param_} prefix) into the client session automatically once login
- * completes. That means this mapper alone decides whether to inject LTI claims: no custom
- * Authenticator, no change to the realm's existing authentication flow, nothing that can
- * conflict with its Required/Alternative structure. An earlier version of this feature used a
- * companion Authenticator ({@link LtiMarkerAuthenticator}, still present but no longer wired
- * into any flow) to stash this value as a session note instead - abandoned after adding it as a
- * flow step broke the realm's Cookie/IdP-Redirector alternatives (Keycloak discards ALTERNATIVE
- * executions at a level that also has a REQUIRED one).
- *
- * <p>For every ordinary iGOT login that request param is absent, so {@link #setClaim} does
- * nothing - the existing {@code CustomProtocolMapper}'s claims (org, user_roles, etc.) are
- * untouched either way.
- *
- * <p>deployment_id / resource_link are PoC placeholders (see {@link LtiConstants}) until the
- * provider/content registry that used to live in cios-content-service is rebuilt elsewhere.
- *
- * <p>Also builds Deep Linking requests: each Tool's deep-linking endpoint (see {@link
- * LtiConstants#DEEP_LINKING_URI_MARKERS}) is a distinct URL from its resource-link launch
- * endpoint, arriving via the same redirect_uri client-session note - that URL is the only
- * signal distinguishing the two, since there's no separate flag for it. When matched,
- * emits {@code LtiDeepLinkingRequest} with a {@code deep_linking_settings} claim instead of
- * {@code resource_link}/{@code custom} (not applicable to Deep Linking) - {@code
- * target_link_uri} is still included either way, since it's a common required claim for
- * every LTI message type, not specific to resource-link launches.
- */
 public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         implements OIDCAccessTokenMapper, OIDCIDTokenMapper, UserInfoTokenMapper {
 
@@ -92,9 +66,11 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
         String ltiMessageHint = null;
         String redirectUri = null;
+        String ltiDeploymentId = null;
         if (clientSessionCtx != null && clientSessionCtx.getClientSession() != null) {
             ltiMessageHint = clientSessionCtx.getClientSession().getNote(LtiConstants.LTI_MESSAGE_HINT_CLIENT_NOTE);
             redirectUri = clientSessionCtx.getClientSession().getNote("redirect_uri");
+            ltiDeploymentId = clientSessionCtx.getClientSession().getNote(LtiConstants.LTI_DEPLOYMENT_ID_CLIENT_NOTE);
         }
         logger.infov("LtiProtocolMapper: lti_message_hint client-session note = {0}", ltiMessageHint);
 
@@ -105,11 +81,22 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
 
         logger.infov("LtiProtocolMapper: injecting LTI claims for lti_message_hint={0}", ltiMessageHint);
 
-        boolean isDeepLinking = redirectUri != null
-                && LtiConstants.DEEP_LINKING_URI_MARKERS.stream().anyMatch(redirectUri::contains);
+        String originalSubject = token.getSubject();
+        String shortenedSubject = shortenSubjectForLti(originalSubject);
+        if (!shortenedSubject.equals(originalSubject)) {
+            logger.infov("LtiProtocolMapper: sub exceeds {0} chars ({1}); shortening for LTI: {2} -> {3}",
+                    LtiConstants.MAX_SUBJECT_LENGTH_FOR_LTI, originalSubject.length(), originalSubject, shortenedSubject);
+            token.setSubject(shortenedSubject);
+        }
 
+        // Deep Linking vs resource-link is signaled purely by lti_message_hint's own content -
+        // no Tool-specific redirect_uri marker list, works identically for every provider.
+        boolean isDeepLinking = "DeepLinkLaunch".equals(ltiMessageHint);
+
+        // lti_deployment_id is the partner's own partnerCode - echoed back verbatim, dynamically,
+        // exactly as received; no hardcoded placeholder fallback.
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
-        token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, LtiConstants.PLACEHOLDER_DEPLOYMENT_ID);
+        token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, ltiDeploymentId);
 
         // target_link_uri is a common required claim for every LTI message type, not just
         // resource-link launches - it's simply "the URL this message was sent to."
@@ -133,80 +120,20 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_DEEP_LINKING_SETTINGS, deepLinkingSettings);
         } else {
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
-
-            // AGS endpoint claim - required by Adobe/Coursera to accept a resource-link launch
-            // even without real grade sync; see LtiConstants.CLAIM_AGS_ENDPOINT javadoc.
             Map<String, Object> agsEndpoint = new LinkedHashMap<>();
             agsEndpoint.put("scope", LtiConstants.AGS_SCOPES);
             agsEndpoint.put("lineitems", LtiConstants.PLACEHOLDER_LINEITEMS_URL);
             agsEndpoint.put("lineitem", LtiConstants.PLACEHOLDER_LINEITEM_URL);
             token.getOtherClaims().put(LtiConstants.CLAIM_AGS_ENDPOINT, agsEndpoint);
 
-            boolean isCoursera = redirectUri != null && redirectUri.contains(LtiConstants.COURSERA_LAUNCH_URI_MARKER);
-            boolean isAdobe = redirectUri != null && redirectUri.contains(LtiConstants.ADOBE_LAUNCH_URI_MARKER);
+            Map<String, Object> decodedCustom = tryDecodeJsonCustomClaim(ltiMessageHint);
 
-            if (isAdobe) {
-                // Adobe's own backend only supports a sub up to MAX_SUBJECT_LENGTH_FOR_LTI chars
-                // (confirmed by Adobe engineering - see that constant's javadoc) and otherwise
-                // crashes with a generic 500 during launch processing. Scoped to Adobe only -
-                // other Tools haven't reported this limit, so their sub is left untouched.
-                String originalSubject = token.getSubject();
-                String shortenedSubject = shortenSubjectForLti(originalSubject);
-                if (!shortenedSubject.equals(originalSubject)) {
-                    logger.infov("LtiProtocolMapper: sub exceeds {0} chars ({1}); shortening for Adobe: {2} -> {3}",
-                            LtiConstants.MAX_SUBJECT_LENGTH_FOR_LTI, originalSubject.length(), originalSubject, shortenedSubject);
-                    token.setSubject(shortenedSubject);
-                }
+            Map<String, Object> resourceLink = new LinkedHashMap<>();
+            resourceLink.put("id", ltiMessageHint);
+            token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
 
-                // Adobe's own /login_initiations handler strips the query string off
-                // target_link_uri before echoing it back as redirect_uri (confirmed from a real
-                // captured launch: target_link_uri claim came back as plain ".../launch", no
-                // ?exportUuid=... at all) - so exportUuid can't be read from redirect_uri here.
-                // lti_message_hint is the one value proven to survive the round trip, so the test
-                // harness puts the raw exportUuid there instead. Adobe's own error page names the
-                // field it wants verbatim ("valid ExportUuid parameter"), so custom uses that
-                // exact key rather than the generic "id" used for Moodle's placeholder shape.
-                // ltiMessageHint is already confirmed non-null/non-empty by the guard clause above.
-                String exportUuid = ltiMessageHint;
-                String resourceId = exportUuid != null ? exportUuid : LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID;
-
-                logger.infov("LtiProtocolMapper: redirect_uri matches Adobe Learning Manager; using exportUuid={0} from lti_message_hint", exportUuid);
-
-                Map<String, Object> resourceLink = new LinkedHashMap<>();
-                resourceLink.put("id", resourceId);
-                token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
-
-                Map<String, Object> custom = new LinkedHashMap<>();
-                custom.put(LtiConstants.ADOBE_EXPORT_UUID_PARAM, resourceId);
-                token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
-            } else if (isCoursera) {
-                logger.info("LtiProtocolMapper: redirect_uri matches Coursera; building Coursera-shaped custom claim");
-
-                Map<String, Object> resourceLink = new LinkedHashMap<>();
-                resourceLink.put("id", LtiConstants.COURSERA_COURSE_ID);
-               // resourceLink.put("title", LtiConstants.COURSERA_RESOURCE_TITLE);
-                token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
-
-                // Coursera's launch.php expects this structured shape (confirmed via its own
-                // LtiDeepLinkingResponse content_items), not Moodle's single opaque custom.id -
-                // sending Moodle's shape here is exactly what produced "Failed to convert deeplink".
-                Map<String, Object> custom = new LinkedHashMap<>();
-                custom.put("link_type", LtiConstants.COURSERA_LINK_TYPE);
-                custom.put("course_id", LtiConstants.COURSERA_COURSE_ID);
-                custom.put("organization_id", LtiConstants.COURSERA_ORGANIZATION_ID);
-                custom.put("program_id", LtiConstants.COURSERA_PROGRAM_ID);
-                custom.put("coursera_source_context_id", null);
-                token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
-            } else {
-                Map<String, Object> resourceLink = new LinkedHashMap<>();
-                resourceLink.put("id", LtiConstants.PLACEHOLDER_RESOURCE_LINK_ID);
-               // resourceLink.put("title", LtiConstants.PLACEHOLDER_RESOURCE_LINK_TITLE);
-                token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
-
-                Map<String, Object> custom = new LinkedHashMap<>();
-                custom.put("id", LtiConstants.PLACEHOLDER_CUSTOM_ID);
-                token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
-            }
+            Map<String, Object> custom = decodedCustom != null ? decodedCustom : Map.of("id", ltiMessageHint);
+            token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
         }
 
         logger.info("LtiProtocolMapper: LTI claims injected successfully");
@@ -232,6 +159,20 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             }
         }
         return originalSubject;
+    }
+
+    private static Map<String, Object> tryDecodeJsonCustomClaim(String ltiMessageHint) {
+        try {
+            String decoded = URLDecoder.decode(ltiMessageHint, StandardCharsets.UTF_8);
+            JsonNode node = new ObjectMapper().readTree(decoded);
+            if (node.isObject()) {
+                return new ObjectMapper().convertValue(node, LinkedHashMap.class);
+            }
+            logger.warnv("LtiProtocolMapper: decoded lti_message_hint is not a JSON object: {0}", decoded);
+        } catch (Exception e) {
+            logger.warnv(e, "LtiProtocolMapper: failed to decode lti_message_hint as JSON: {0}", ltiMessageHint);
+        }
+        return null;
     }
 
     /**

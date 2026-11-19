@@ -18,6 +18,12 @@ public final class LtiConstants {
      *  a live AuthenticationFlowContext dump: {@code client_request_param_lti_message_hint=...}. */
     public static final String LTI_MESSAGE_HINT_CLIENT_NOTE = "client_request_param_lti_message_hint";
 
+    /** Same Keycloak client-note prefixing behavior as {@link #LTI_MESSAGE_HINT_CLIENT_NOTE},
+     *  for the {@code lti_deployment_id} request param - its value is the partner's own
+     *  partnerCode (e.g. "IGOT-MOODLE-W8HF4"), echoed back verbatim as the deployment_id claim
+     *  rather than a hardcoded placeholder. */
+    public static final String LTI_DEPLOYMENT_ID_CLIENT_NOTE = "client_request_param_lti_deployment_id";
+
     public static final String CLAIM_MESSAGE_TYPE = "https://purl.imsglobal.org/spec/lti/claim/message_type";
     public static final String CLAIM_VERSION = "https://purl.imsglobal.org/spec/lti/claim/version";
     public static final String CLAIM_DEPLOYMENT_ID = "https://purl.imsglobal.org/spec/lti/claim/deployment_id";
@@ -30,80 +36,12 @@ public final class LtiConstants {
     public static final String MESSAGE_TYPE_RESOURCE_LINK_REQUEST = "LtiResourceLinkRequest";
     public static final String MESSAGE_TYPE_DEEP_LINKING_REQUEST = "LtiDeepLinkingRequest";
     public static final String LTI_VERSION = "1.3.0";
-
-    /** Substring markers used to detect a Deep Linking launch: every Tool's deep-linking
-     *  endpoint is a distinct URL from its resource-link launch endpoint, arriving via the
-     *  same redirect_uri client-session note - no separate flag exists to tell them apart, so
-     *  the URL itself is the signal. Each Tool names its endpoint differently (Moodle:
-     *  "launch_deeplink.php", Coursera: ".../deep-linking/launch"), so this is a per-Tool list,
-     *  not a single pattern - extend it here when a new Tool is onboarded, until a real
-     *  per-Tool registry replaces this entirely. */
-    public static final List<String> DEEP_LINKING_URI_MARKERS = List.of(
-            "launch_deeplink.php",
-            "deep-linking/launch"
-    );
-
-    /** Full set of LTI Deep Linking content-item types (spec section on Content Item Types).
-     *  Not narrowed to just "ltiResourceLink" - a Tool's content picker shouldn't be
-     *  artificially restricted to one item type when the Platform can accept any of these. */
     public static final List<String> ACCEPTED_DEEP_LINKING_TYPES = List.of(
             "link", "file", "html", "ltiResourceLink", "image"
     );
-
-    /** Real receiving endpoint: LtiController#handleDeepLinkingReturn in cios-content-service,
-     *  under that service's actual base path (/ciosIntegration/lti/...), fronted by a public,
-     *  unauthenticated Kong route direct to cios-content-service - no iGOT session exists for
-     *  external Tools posting here, so it can't go through uiproxy's protected /proxies/v8 tier. */
     public static final String DEEP_LINK_RETURN_URL =
             "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/deeplink/return";
-
-    /** PoC placeholders: no provider/resource-link registry exists since the removal of
-     *  cios-content-service's LTI package. Single hardcoded deployment, matching the one
-     *  Deployment ID ("1") registered on Moodle's side today. Replace with a real per-Tool,
-     *  per-content lookup once that registry is rebuilt. */
-    public static final String PLACEHOLDER_DEPLOYMENT_ID = "1";
-    public static final String PLACEHOLDER_RESOURCE_LINK_ID = "1";
     public static final String PLACEHOLDER_RESOURCE_LINK_TITLE = "iGOT LTI Resource";
-
-    /** Moodle's enrol_lti "Publish as LTI tool" Custom properties value for the one PoC
-     *  resource ("Course: test course") - Moodle's launch.php rejects the launch without a
-     *  matching custom.id claim, separate from resource_link.id. */
-    public static final String PLACEHOLDER_CUSTOM_ID = "602ba6d8-da5e-4ffa-8ed3-ffeab3211ebe";
-
-    /** Substring marker identifying a Coursera-bound resource-link launch (redirect_uri host),
-     *  same per-Tool-list pattern as {@link #DEEP_LINKING_URI_MARKERS} - Coursera's custom
-     *  claim shape is structurally different from Moodle's (a content/org/program id triple,
-     *  not a single opaque UUID), confirmed via the "Failed to convert deeplink" error Coursera
-     *  returned when it received Moodle's placeholder UUID in custom.id instead. */
-    public static final String COURSERA_LAUNCH_URI_MARKER = "coursera.org";
-
-    /** Real values for the one PoC Coursera resource, obtained directly from Coursera's own
-     *  LtiDeepLinkingResponse content_items - not invented placeholders. custom.id is not used
-     *  for Coursera; it expects this structured shape instead
-     *  (link_type/course_id/organization_id/program_id/coursera_source_context_id). */
-    public static final String COURSERA_RESOURCE_TITLE = "AI For Everyone";
-    public static final String COURSERA_LINK_TYPE = "COURSE";
-    public static final String COURSERA_COURSE_ID = "daG-a-O1EeijKBISCWxf6g";
-    public static final String COURSERA_ORGANIZATION_ID = "38fNLqIAQ5C9FXQVtAwAOQ";
-    public static final String COURSERA_PROGRAM_ID = "XKGCT3amR96hgk92pufecQ";
-
-
-    /** Substring marker identifying an Adobe Learning Manager-bound resource-link launch
-     *  (redirect_uri host), same per-Tool-list pattern as {@link #COURSERA_LAUNCH_URI_MARKER}.
-     *  Unlike Coursera, Adobe identifies the specific course directly via an exportUuid query
-     *  param on its own launch URL (confirmed from the two real sample course links provided -
-     *  same /launch path, different exportUuid), rather than needing a structured custom claim -
-     *  so resource_link.id/custom.id are read dynamically from redirect_uri's exportUuid, not
-     *  hardcoded per course. */
-    public static final String ADOBE_LAUNCH_URI_MARKER = "learningmanagereu.adobe.com";
-    public static final String ADOBE_EXPORT_UUID_PARAM = "exportUuid";
-
-    /** Assignment and Grade Services (AGS) endpoint claim - required by some Tools (confirmed:
-     *  Adobe Learning Manager, Coursera) for a resource-link launch to succeed, even when the
-     *  Platform never implements grade sync. No AGS backend exists here (lineitems/lineitem
-     *  URLs below are not real endpoints), matching Adobe's own documented guidance that a
-     *  placeholder lineitem URL is acceptable when grade sync isn't implemented. Not emitted
-     *  for Deep Linking requests - AGS only applies to resource-link launches. */
     public static final String CLAIM_AGS_ENDPOINT = "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
     public static final List<String> AGS_SCOPES = List.of(
             "https://purl.imsglobal.org/spec/lti-ags/scope/lineitem",
@@ -116,22 +54,10 @@ public final class LtiConstants {
     public static final String PLACEHOLDER_LINEITEM_URL =
             "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems/1/lineitem";
 
-    /** Adobe Learning Manager's own backend only supports a {@code sub} claim up to this many
-     *  characters (confirmed directly by Adobe engineering after a HAR-based investigation into
-     *  a generic 500 on launch) - Keycloak's default subject for a federated user is
-     *  {@code f:<federation-link-uuid>:<raw-user-id>}, which runs to 75 chars and silently
-     *  crashes Adobe's launch processing. Only applied to Adobe-bound tokens - no other Tool has
-     *  reported this limit, so their {@code sub} is left as Keycloak's default. */
     public static final int MAX_SUBJECT_LENGTH_FOR_LTI = 62;
 
     public static final String LEARNER_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Learner";
-
-    /** Deep Linking / content-selection in Moodle's enrol_lti is a teacher-facing workflow -
-     *  confirmed directly against the "test course" published resource's settings, which gate
-     *  provisioning separately per role ("Teacher first launch provisioning mode" vs "Student
-     *  first launch provisioning mode"). Sending Learner for a Deep Linking launch routes
-     *  through the student path instead, which is why the content picker came back empty. */
     public static final String INSTRUCTOR_ROLE =
             "http://purl.imsglobal.org/vocab/lis/v2/membership#Instructor";
 }
