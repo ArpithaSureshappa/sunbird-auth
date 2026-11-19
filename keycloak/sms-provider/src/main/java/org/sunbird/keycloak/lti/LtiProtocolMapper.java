@@ -89,14 +89,31 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.setSubject(shortenedSubject);
         }
 
-        // Deep Linking vs resource-link is signaled purely by lti_message_hint's own content -
-        // no Tool-specific redirect_uri marker list, works identically for every provider.
-        boolean isDeepLinking = "DeepLinkLaunch".equals(ltiMessageHint);
+        // lti_deployment_id never survives the Tool's login-initiation -> Platform /auth
+        // redirect (not a standard OIDC Authentication Request parameter, confirmed absent from
+        // real captured tokens for Moodle/Coursera/Adobe alike) - lti_message_hint is the one
+        // value proven to survive, so it carries partnerCode (== deployment_id) instead, in
+        // different shapes per message type:
+        //   Deep Linking:    "Deeplink:{partnerCode}"           (plain prefixed string)
+        //   Resource link:   JSON with a "partnerCode" key, alongside whatever other
+        //                    provider-specific fields the custom claim itself needs.
+        boolean isDeepLinking = ltiMessageHint.startsWith("Deeplink:");
 
-        // lti_deployment_id is the partner's own partnerCode - echoed back verbatim, dynamically,
-        // exactly as received; no hardcoded placeholder fallback.
+        Map<String, Object> decodedHint = null;
+        String deploymentId;
+        if (isDeepLinking) {
+            deploymentId = ltiMessageHint.substring("Deeplink:".length());
+        } else {
+            decodedHint = tryDecodeJsonCustomClaim(ltiMessageHint);
+            // Removed from the map (not just read) - partnerCode is this mapper's own
+            // extraction key for the deployment_id claim, not something the Tool's custom-claim
+            // processing needs to see alongside its own fields.
+            Object partnerCodeFromHint = decodedHint != null ? decodedHint.remove("partnerCode") : null;
+            deploymentId = partnerCodeFromHint != null ? String.valueOf(partnerCodeFromHint) : ltiDeploymentId;
+        }
+
         token.getOtherClaims().put(LtiConstants.CLAIM_VERSION, LtiConstants.LTI_VERSION);
-        token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, ltiDeploymentId);
+        token.getOtherClaims().put(LtiConstants.CLAIM_DEPLOYMENT_ID, deploymentId);
 
         // target_link_uri is a common required claim for every LTI message type, not just
         // resource-link launches - it's simply "the URL this message was sent to."
@@ -107,7 +124,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
         token.getOtherClaims().put(LtiConstants.CLAIM_ROLES, Collections.singletonList(role));
 
         if (isDeepLinking) {
-            logger.info("LtiProtocolMapper: redirect_uri matches Deep Linking endpoint; building LtiDeepLinkingRequest as Instructor");
+            logger.infov("LtiProtocolMapper: lti_message_hint starts with Deeplink:; building LtiDeepLinkingRequest as Instructor, deploymentId={0}", deploymentId);
 
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
 
@@ -126,13 +143,11 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             agsEndpoint.put("lineitem", LtiConstants.PLACEHOLDER_LINEITEM_URL);
             token.getOtherClaims().put(LtiConstants.CLAIM_AGS_ENDPOINT, agsEndpoint);
 
-            Map<String, Object> decodedCustom = tryDecodeJsonCustomClaim(ltiMessageHint);
-
             Map<String, Object> resourceLink = new LinkedHashMap<>();
             resourceLink.put("id", ltiMessageHint);
             token.getOtherClaims().put(LtiConstants.CLAIM_RESOURCE_LINK, resourceLink);
 
-            Map<String, Object> custom = decodedCustom != null ? decodedCustom : Map.of("id", ltiMessageHint);
+            Map<String, Object> custom = decodedHint != null ? decodedHint : Map.of("id", ltiMessageHint);
             token.getOtherClaims().put(LtiConstants.CLAIM_CUSTOM, custom);
         }
 
