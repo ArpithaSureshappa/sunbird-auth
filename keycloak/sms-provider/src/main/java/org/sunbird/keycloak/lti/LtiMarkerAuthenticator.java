@@ -20,19 +20,19 @@ public class LtiMarkerAuthenticator implements Authenticator {
     @Override
     public void authenticate(AuthenticationFlowContext context) {
         String ltiMessageHint = context.getAuthenticationSession()
-                .getClientNote(LtiConstants.LTI_MESSAGE_HINT_PARAM);
+                .getClientNote(LtiConstants.LTI_MESSAGE_HINT_CLIENT_NOTE);
 
         if (ltiMessageHint != null && !ltiMessageHint.isEmpty()) {
-            logger.debug("LtiMarkerAuthenticator: lti_message_hint present, marking session for LTI claim injection");
+            logger.info("LtiMarkerAuthenticator: lti_message_hint present, marking session for LTI claim injection");
             context.getAuthenticationSession().setUserSessionNote(
                     LtiConstants.LTI_MESSAGE_HINT_PARAM, ltiMessageHint);
-
-            // target_link_uri claim should match the redirect_uri the Tool actually registered
-            // for this launch - propagate it the same way, rather than hardcoding it.
             String redirectUri = context.getAuthenticationSession().getClientNote("redirect_uri");
             if (redirectUri != null) {
                 context.getAuthenticationSession().setUserSessionNote("lti_target_link_uri", redirectUri);
             }
+        } else {
+            logger.infov("LtiMarkerAuthenticator: lti_message_hint absent; all client notes = {0}",
+                    context.getAuthenticationSession().getClientNotes());
         }
 
         context.success();
