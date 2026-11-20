@@ -3,6 +3,7 @@ package org.sunbird.keycloak.lti;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URLDecoder;
+import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -129,7 +130,9 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
 
             Map<String, Object> deepLinkingSettings = new LinkedHashMap<>();
-            deepLinkingSettings.put("deep_link_return_url", LtiConstants.DEEP_LINK_RETURN_URL);//igot return url
+            String returnUrl = LtiConstants.DEEP_LINK_RETURN_URL + "?partnerCode="
+                    + URLEncoder.encode(deploymentId, StandardCharsets.UTF_8).replace("+", "%20");
+            deepLinkingSettings.put("deep_link_return_url", returnUrl);//igot return url
             deepLinkingSettings.put("accept_types", LtiConstants.ACCEPTED_DEEP_LINKING_TYPES);//"link", "file", "html",
             deepLinkingSettings.put("accept_presentation_document_targets", List.of("iframe", "window"));
             deepLinkingSettings.put("accept_multiple", false);
