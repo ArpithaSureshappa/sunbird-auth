@@ -140,10 +140,28 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_DEEP_LINKING_SETTINGS, deepLinkingSettings);
         } else {
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_RESOURCE_LINK_REQUEST);
+
+            // externalId identifies the specific course/content for the AGS lineitem - carried
+            // in lti_message_hint alongside partnerCode, same mechanism (added by whichever
+            // service builds the launch URL, e.g. cb_external_enrollment_service).
+            Object externalIdFromHint = decodedHint != null ? decodedHint.get("externalId") : null;
+            String externalId = externalIdFromHint != null ? String.valueOf(externalIdFromHint) : "";
+            if (externalIdFromHint == null) {
+                logger.warnv("LtiProtocolMapper: lti_message_hint has no externalId; AGS lineitem claim will be incomplete for deploymentId={0}", deploymentId);
+            }
+
+            String ciosServiceBaseUrl = System.getenv(LtiConstants.CIOS_SERVICE_BASE_URL_ENV);
+            if (ciosServiceBaseUrl == null || ciosServiceBaseUrl.isEmpty()) {
+                logger.warnv("LtiProtocolMapper: {0} env var not set; AGS lineitem claim will be incomplete", LtiConstants.CIOS_SERVICE_BASE_URL_ENV);
+                ciosServiceBaseUrl = "";
+            }
+            String lineitemUrl = ciosServiceBaseUrl + LtiConstants.AGS_LINEITEM_PATH
+                    + "?externalId=" + URLEncoder.encode(externalId, StandardCharsets.UTF_8)
+                    + "&partnerCode=" + URLEncoder.encode(deploymentId != null ? deploymentId : "", StandardCharsets.UTF_8);
+
             Map<String, Object> agsEndpoint = new LinkedHashMap<>();
             agsEndpoint.put("scope", LtiConstants.AGS_SCOPES);
-            agsEndpoint.put("lineitems", LtiConstants.PLACEHOLDER_LINEITEMS_URL);
-            agsEndpoint.put("lineitem", LtiConstants.PLACEHOLDER_LINEITEM_URL);
+            agsEndpoint.put("lineitem", lineitemUrl);
             token.getOtherClaims().put(LtiConstants.CLAIM_AGS_ENDPOINT, agsEndpoint);
 
             Map<String, Object> resourceLink = new LinkedHashMap<>();

@@ -49,10 +49,10 @@ public final class LtiConstants {
             "https://purl.imsglobal.org/spec/lti-ags/scope/result.readonly",
             "https://purl.imsglobal.org/spec/lti-ags/scope/score"
     );
-    public static final String PLACEHOLDER_LINEITEMS_URL =
-            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems";
-    public static final String PLACEHOLDER_LINEITEM_URL =
-            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/ags/lineitems/1/lineitem";
+    /** Env var holding cios-content-service's own direct base URL (not the Kong-routed public
+     *  one) - AGS calls go straight to the service, not through the gateway. */
+    public static final String CIOS_SERVICE_BASE_URL_ENV = "CIOS_CONTENT_SERVICE_API_BASE";
+    public static final String AGS_LINEITEM_PATH = "/ciosIntegration/lti/ags/lineitems/lineitem";
 
     public static final int MAX_SUBJECT_LENGTH_FOR_LTI = 62;
 
