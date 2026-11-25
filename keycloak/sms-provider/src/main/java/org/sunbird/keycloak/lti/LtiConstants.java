@@ -51,7 +51,7 @@ public final class LtiConstants {
     /** Env var holding cios-content-service's own direct base URL (not the Kong-routed public
      *  one) - AGS calls go straight to the service, not through the gateway. */
     public static final String HOST = "https://portal.dev.karmayogibharat.net";
-    public static final String AGS_LINEITEM_PATH = "/api/ciosIntegration/lti/ags/lineitems/lineitem/scores";
+    public static final String AGS_LINEITEM_PATH = "/api/ciosIntegration/lti/ags/lineitems/lineitem";
 
     public static final int MAX_SUBJECT_LENGTH_FOR_LTI = 62;
 
