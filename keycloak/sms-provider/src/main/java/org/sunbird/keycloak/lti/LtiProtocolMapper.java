@@ -199,7 +199,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
      * AGS lineitem URL - one common host, read once.
      */
     private static String resolveHost() {
-        String host = System.getenv(LtiConstants.HOST);
+        String host = LtiConstants.HOST;
         if (host == null || host.isEmpty()) {
             logger.warnv("LtiProtocolMapper: {0} env var not set; URLs built from it will be incomplete", LtiConstants.HOST);
             return "";
