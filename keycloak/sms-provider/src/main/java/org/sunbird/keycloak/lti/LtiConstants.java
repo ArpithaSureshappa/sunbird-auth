@@ -39,8 +39,7 @@ public final class LtiConstants {
     public static final List<String> ACCEPTED_DEEP_LINKING_TYPES = List.of(
             "link", "file", "html", "ltiResourceLink", "image"
     );
-    public static final String DEEP_LINK_RETURN_URL =
-            "https://portal.dev.karmayogibharat.net/api/ciosIntegration/lti/deeplink/return";
+    public static final String DEEP_LINK_RETURN_URL = "/api/ciosIntegration/lti/deeplink/return";
     public static final String PLACEHOLDER_RESOURCE_LINK_TITLE = "iGOT LTI Resource";
     public static final String CLAIM_AGS_ENDPOINT = "https://purl.imsglobal.org/spec/lti-ags/claim/endpoint";
     public static final List<String> AGS_SCOPES = List.of(
@@ -51,8 +50,8 @@ public final class LtiConstants {
     );
     /** Env var holding cios-content-service's own direct base URL (not the Kong-routed public
      *  one) - AGS calls go straight to the service, not through the gateway. */
-    public static final String CIOS_SERVICE_BASE_URL_ENV = "CIOS_CONTENT_SERVICE_API_BASE";
-    public static final String AGS_LINEITEM_PATH = "/ciosIntegration/lti/ags/lineitems/lineitem";
+    public static final String HOST = "https://portal.dev.karmayogibharat.net";
+    public static final String AGS_LINEITEM_PATH = "/api/ciosIntegration/lti/ags/lineitems/lineitem";
 
     public static final int MAX_SUBJECT_LENGTH_FOR_LTI = 62;
 

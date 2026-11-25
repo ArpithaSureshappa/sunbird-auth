@@ -130,7 +130,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             token.getOtherClaims().put(LtiConstants.CLAIM_MESSAGE_TYPE, LtiConstants.MESSAGE_TYPE_DEEP_LINKING_REQUEST);
 
             Map<String, Object> deepLinkingSettings = new LinkedHashMap<>();
-            String returnUrl = LtiConstants.DEEP_LINK_RETURN_URL + "?partnerCode="
+            String returnUrl = resolveHost() + LtiConstants.DEEP_LINK_RETURN_URL + "?partnerCode="
                     + URLEncoder.encode(deploymentId, StandardCharsets.UTF_8).replace("+", "%20");
             deepLinkingSettings.put("deep_link_return_url", returnUrl);//igot return url
             deepLinkingSettings.put("accept_types", LtiConstants.ACCEPTED_DEEP_LINKING_TYPES);//"link", "file", "html",
@@ -150,12 +150,7 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
                 logger.warnv("LtiProtocolMapper: lti_message_hint has no externalId; AGS lineitem claim will be incomplete for deploymentId={0}", deploymentId);
             }
 
-            String ciosServiceBaseUrl = System.getenv(LtiConstants.CIOS_SERVICE_BASE_URL_ENV);
-            if (ciosServiceBaseUrl == null || ciosServiceBaseUrl.isEmpty()) {
-                logger.warnv("LtiProtocolMapper: {0} env var not set; AGS lineitem claim will be incomplete", LtiConstants.CIOS_SERVICE_BASE_URL_ENV);
-                ciosServiceBaseUrl = "";
-            }
-            String lineitemUrl = ciosServiceBaseUrl + LtiConstants.AGS_LINEITEM_PATH
+            String lineitemUrl = resolveHost() + LtiConstants.AGS_LINEITEM_PATH
                     + "?externalId=" + URLEncoder.encode(externalId, StandardCharsets.UTF_8)
                     + "&partnerCode=" + URLEncoder.encode(deploymentId != null ? deploymentId : "", StandardCharsets.UTF_8);
 
@@ -195,6 +190,21 @@ public class LtiProtocolMapper extends AbstractOIDCProtocolMapper
             }
         }
         return originalSubject;
+    }
+
+    /**
+     * cios-content-service's own base URL for this environment - same env var name across
+     * dev/qa/etc, each environment sets its own value (e.g. https://portal.dev.karmayogibharat.net,
+     * https://portal.qa.karmayogibharat.net). Shared by both the Deep Linking return URL and the
+     * AGS lineitem URL - one common host, read once.
+     */
+    private static String resolveHost() {
+        String host = System.getenv(LtiConstants.HOST);
+        if (host == null || host.isEmpty()) {
+            logger.warnv("LtiProtocolMapper: {0} env var not set; URLs built from it will be incomplete", LtiConstants.HOST);
+            return "";
+        }
+        return host;
     }
 
     private static Map<String, Object> tryDecodeJsonCustomClaim(String ltiMessageHint) {
